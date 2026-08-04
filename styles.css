@@ -35,14 +35,14 @@ a { color: var(--accent); }
 /* ----------------------------  BANNER  ---------------------------- */
 .banner { height: clamp(150px, 34vw, 210px); overflow: hidden;
   background: linear-gradient(160deg, #EEEAE4, #F6F3EE); }
-.banner img { width: 100%; height: 100%; object-fit: cover; object-position: 82% 18%; }
+.banner img { width: 100%; height: 100%; object-fit: cover; object-position: 70% 12%; }
 
 /* ---------------------------  PORTRAIT  --------------------------- */
 .portrait { width: clamp(150px, 40vw, 188px); aspect-ratio: 1; margin: 0 auto;
   margin-top: calc(-1 * clamp(80px, 20vw, 104px)); position: relative; z-index: 2;
   border-radius: 50%; border: 6px solid var(--bg); overflow: hidden;
   background: #EEEAE4; box-shadow: 0 10px 26px -14px rgba(0,0,0,.35); }
-.portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; }
+.portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 30% 30%; }
 
 /* ---------------------------  IDENTITY  --------------------------- */
 .identity { text-align: center; margin-top: 22px; }
