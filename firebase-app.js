@@ -71,6 +71,32 @@ const firebaseConfig = {
     });
   }
 
+  /* =====================  LIGHTBOX (works even before Firebase loads) ===================== */
+  var lightbox = $("lightbox"), lightboxImg = $("lightboxImg"), lightboxClose = $("lightboxClose");
+  function openLightbox(src, alt) {
+    lightboxImg.src = src; lightboxImg.alt = alt || "";
+    lightbox.hidden = false;
+    document.addEventListener("keydown", onLightboxKey);
+  }
+  function closeLightbox() {
+    lightbox.hidden = true; lightboxImg.src = "";
+    document.removeEventListener("keydown", onLightboxKey);
+  }
+  function onLightboxKey(e) { if (e.key === "Escape") closeLightbox(); }
+  if (lightboxClose) lightboxClose.addEventListener("click", closeLightbox);
+  if (lightbox) lightbox.addEventListener("click", function (e) { if (e.target === lightbox) closeLightbox(); });
+
+  /* Family gallery tiles (static, already in the HTML) */
+  document.querySelectorAll(".gallery-item").forEach(function (btn) {
+    btn.addEventListener("click", function () { openLightbox(btn.dataset.src); });
+  });
+
+  /* Attach the lightbox to any <img> the visitor-uploaded grids create */
+  function makeClickable(img) {
+    img.style.cursor = "pointer";
+    img.addEventListener("click", function () { openLightbox(img.src, img.alt); });
+  }
+
   /* If the config hasn't been filled in yet, show a gentle notice and stop. */
   if (NOT_CONFIGURED) {
     var note = 'Shared guestbook not connected yet — add your Firebase keys in ' +
@@ -88,57 +114,198 @@ const firebaseConfig = {
   firebase.initializeApp(firebaseConfig);
   var db = firebase.firestore();
   var storage = firebase.storage();
+  var auth = firebase.auth();
   function serverTime() { return firebase.firestore.FieldValue.serverTimestamp(); }
+
+  /* =====================  ADMIN SIGN IN  ===================== */
+  var isAdmin = false;
+  var adminLink = $("adminLink"), adminModal = $("adminModal"), adminClose = $("adminClose"),
+      adminForm = $("adminForm"), adminSignOut = $("adminSignOut"),
+      adminSignedOut = $("adminSignedOut"), adminSignedIn = $("adminSignedIn"),
+      adminStatus = $("adminStatus");
+
+  function openAdminModal() { adminModal.hidden = false; }
+  function closeAdminModal() { adminModal.hidden = true; }
+  if (adminLink) adminLink.addEventListener("click", function (e) { e.preventDefault(); openAdminModal(); });
+  if (adminClose) adminClose.addEventListener("click", closeAdminModal);
+  if (adminModal) adminModal.addEventListener("click", function (e) { if (e.target === adminModal) closeAdminModal(); });
+
+  if (adminForm) adminForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var email = $("adminEmail").value.trim(), pass = $("adminPass").value;
+    adminStatus.textContent = "Signing in…";
+    auth.signInWithEmailAndPassword(email, pass).then(function () {
+      adminStatus.textContent = "";
+      adminForm.reset();
+      closeAdminModal();
+    }).catch(function (err) {
+      adminStatus.textContent = "Couldn't sign in — check your email and password.";
+      console.error(err);
+    });
+  });
+  if (adminSignOut) adminSignOut.addEventListener("click", function () { auth.signOut(); closeAdminModal(); });
+
+  auth.onAuthStateChanged(function (user) {
+    isAdmin = !!user;
+    document.body.classList.toggle("is-admin", isAdmin);
+    if (adminSignedOut) adminSignedOut.hidden = isAdmin;
+    if (adminSignedIn) adminSignedIn.hidden = !isAdmin;
+    renderWall(); renderPhotos(); renderVideos();
+  });
 
   /* =====================  MEMORY WALL  ===================== */
   var wall = $("wall");
-  db.collection("tributes").orderBy("createdAt", "desc").onSnapshot(function (snap) {
+  var latestTributes = [];
+
+  function renderWall() {
     wall.innerHTML = "";
-    if (snap.empty) {
+    if (!latestTributes.length) {
       wall.innerHTML = '<p class="empty">Be the first to leave a tribute.</p>';
       return;
     }
-    snap.forEach(function (doc) {
-      var m = doc.data();
+    latestTributes.forEach(function (item) {
+      var id = item.id, m = item.data;
       var el = document.createElement("div"); el.className = "memory";
       var date = document.createElement("div"); date.className = "date"; date.textContent = fmt(m.createdAt);
+      el.appendChild(date);
+
+      if (m.attachUrl) {
+        var wrap = document.createElement("div"); wrap.className = "attachment";
+        if (m.attachType === "video") {
+          var v = document.createElement("video"); v.src = m.attachUrl; v.controls = true; v.setAttribute("playsinline", "");
+          wrap.appendChild(v);
+        } else {
+          var im = document.createElement("img"); im.src = m.attachUrl; im.loading = "lazy"; im.alt = "";
+          makeClickable(im);
+          wrap.appendChild(im);
+        }
+        el.appendChild(wrap);
+      }
+
       var msg = document.createElement("p"); msg.className = "msg"; msg.textContent = m.message;
+      el.appendChild(msg);
       var from = document.createElement("div"); from.className = "from"; from.textContent = m.name;
-      el.appendChild(date); el.appendChild(msg); el.appendChild(from);
+      el.appendChild(from);
+
+      var actions = document.createElement("div"); actions.className = "owner-actions";
+      var editBtn = document.createElement("button"); editBtn.type = "button"; editBtn.textContent = "Edit";
+      var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
+      editBtn.addEventListener("click", function () { startEditTribute(el, id, m); });
+      delBtn.addEventListener("click", function () {
+        if (!confirm("Delete this tribute? This can't be undone.")) return;
+        db.collection("tributes").doc(id).delete().then(function () {
+          if (m.attachPath) storage.ref(m.attachPath).delete().catch(function () {});
+        }).catch(function (err) { alert("Couldn't delete."); console.error(err); });
+      });
+      actions.appendChild(editBtn); actions.appendChild(delBtn);
+      el.appendChild(actions);
+
       wall.appendChild(el);
     });
+  }
+
+  function startEditTribute(el, id, m) {
+    var msgEl = el.querySelector(".msg");
+    var textarea = document.createElement("textarea");
+    textarea.className = "edit-msg-area"; textarea.value = m.message;
+    msgEl.replaceWith(textarea);
+    var actions = el.querySelector(".owner-actions");
+    actions.innerHTML = "";
+    var save = document.createElement("button"); save.type = "button"; save.textContent = "Save";
+    var cancel = document.createElement("button"); cancel.type = "button"; cancel.textContent = "Cancel";
+    save.addEventListener("click", function () {
+      db.collection("tributes").doc(id).update({ message: textarea.value.trim() })
+        .catch(function (err) { alert("Couldn't save changes."); console.error(err); });
+    });
+    cancel.addEventListener("click", renderWall);
+    actions.appendChild(save); actions.appendChild(cancel);
+  }
+
+  db.collection("tributes").orderBy("createdAt", "desc").onSnapshot(function (snap) {
+    latestTributes = snap.docs.map(function (d) { return { id: d.id, data: d.data() }; });
+    renderWall();
   }, function (err) { console.error("tributes:", err); });
 
   mform.addEventListener("submit", function (e) {
     e.preventDefault();
     var name = $("mName").value.trim(), message = $("mMsg").value.trim();
+    var file = ($("mFile").files || [])[0];
+    var status = $("mStatus");
     if (!name || !message) return;
     var btn = mform.querySelector('button[type="submit"]'); btn.disabled = true;
-    db.collection("tributes").add({ name: name, message: message, createdAt: serverTime() })
-      .then(function () {
-        mform.reset(); mform.classList.remove("open");
-        writeBtn.setAttribute("aria-expanded", "false");
-      })
-      .catch(function (err) { alert("Sorry, your message couldn't be posted. Please try again."); console.error(err); })
-      .finally(function () { btn.disabled = false; });
+
+    function saveTribute(attach) {
+      var payload = { name: name, message: message, createdAt: serverTime() };
+      if (attach) { payload.attachUrl = attach.url; payload.attachType = attach.type; if (attach.path) payload.attachPath = attach.path; }
+      return db.collection("tributes").add(payload);
+    }
+
+    var work;
+    if (!file) {
+      work = saveTribute(null);
+    } else if (file.type.indexOf("image/") === 0) {
+      status.textContent = "Uploading photo…";
+      work = shrink(file).then(function (dataUrl) { return saveTribute({ url: dataUrl, type: "image" }); });
+    } else if (file.type.indexOf("video/") === 0) {
+      var path = "tribute-videos/" + Date.now() + "-" + Math.random().toString(36).slice(2) + "-" + file.name;
+      work = new Promise(function (resolve, reject) {
+        var task = storage.ref().child(path).put(file, { contentType: file.type });
+        task.on("state_changed", function (snap) {
+          status.textContent = "Uploading video… " + Math.round((snap.bytesTransferred / snap.totalBytes) * 100) + "%";
+        }, reject, function () {
+          task.snapshot.ref.getDownloadURL().then(function (url) { resolve(saveTribute({ url: url, type: "video", path: path })); }).catch(reject);
+        });
+      });
+    } else {
+      status.textContent = "Attachments must be a photo or video file.";
+      btn.disabled = false;
+      return;
+    }
+
+    work.then(function () {
+      mform.reset(); mform.classList.remove("open");
+      writeBtn.setAttribute("aria-expanded", "false");
+      status.textContent = "";
+    }).catch(function (err) {
+      status.textContent = "Sorry, your message couldn't be posted. Please try again.";
+      console.error(err);
+    }).finally(function () { btn.disabled = false; });
   });
 
   /* =====================  PHOTOS  ===================== */
   var uploadWrap = $("uploadWrap"), uploadGrid = $("uploadGrid");
-  db.collection("photos").orderBy("createdAt", "desc").onSnapshot(function (snap) {
+  var latestPhotos = [];
+
+  function renderPhotos() {
     uploadGrid.innerHTML = "";
-    uploadWrap.hidden = snap.empty;
-    snap.forEach(function (doc) {
-      var p = doc.data();
+    uploadWrap.hidden = !latestPhotos.length;
+    latestPhotos.forEach(function (item) {
+      var id = item.id, p = item.data;
       var fig = document.createElement("figure"); fig.className = "up-tile";
       var im = document.createElement("img"); im.src = p.image; im.loading = "lazy";
       im.alt = p.caption || "Shared photo of Prince Anthony Bart-Appiah";
+      makeClickable(im);
       var cap = document.createElement("figcaption");
       var who = p.name ? p.name : "Anonymous";
       cap.textContent = (p.caption ? p.caption + " — " : "") + who + " · " + fmt(p.createdAt);
       fig.appendChild(im); fig.appendChild(cap);
+
+      var actions = document.createElement("div"); actions.className = "owner-actions";
+      var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
+      delBtn.addEventListener("click", function () {
+        if (!confirm("Delete this photo? This can't be undone.")) return;
+        db.collection("photos").doc(id).delete().catch(function (err) { alert("Couldn't delete."); console.error(err); });
+      });
+      actions.appendChild(delBtn);
+      fig.appendChild(actions);
+
       uploadGrid.appendChild(fig);
     });
+  }
+
+  db.collection("photos").orderBy("createdAt", "desc").onSnapshot(function (snap) {
+    latestPhotos = snap.docs.map(function (d) { return { id: d.id, data: d.data() }; });
+    renderPhotos();
   }, function (err) { console.error("photos:", err); });
 
   pform.addEventListener("submit", function (e) {
@@ -168,11 +335,13 @@ const firebaseConfig = {
   /* =====================  VIDEOS  ===================== */
   var MAX_VIDEO_BYTES = 150 * 1024 * 1024; // 150 MB — keep phone uploads reasonable
   var videoGrid = $("videoGrid"), videoEmpty = $("videoEmpty");
-  db.collection("videos").orderBy("createdAt", "desc").onSnapshot(function (snap) {
+  var latestVideos = [];
+
+  function renderVideos() {
     videoGrid.innerHTML = "";
-    videoEmpty.hidden = !snap.empty;
-    snap.forEach(function (doc) {
-      var v = doc.data();
+    videoEmpty.hidden = !!latestVideos.length;
+    latestVideos.forEach(function (item) {
+      var id = item.id, v = item.data;
       var fig = document.createElement("figure"); fig.className = "video-tile";
       var vid = document.createElement("video");
       vid.src = v.url; vid.controls = true; vid.preload = "metadata";
@@ -182,8 +351,25 @@ const firebaseConfig = {
       var who = v.name ? v.name : "Anonymous";
       cap.textContent = (v.caption ? v.caption + " — " : "") + who + " · " + fmt(v.createdAt);
       fig.appendChild(cap);
+
+      var actions = document.createElement("div"); actions.className = "owner-actions";
+      var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
+      delBtn.addEventListener("click", function () {
+        if (!confirm("Delete this video? This can't be undone.")) return;
+        db.collection("videos").doc(id).delete().then(function () {
+          if (v.path) storage.ref(v.path).delete().catch(function () {});
+        }).catch(function (err) { alert("Couldn't delete."); console.error(err); });
+      });
+      actions.appendChild(delBtn);
+      fig.appendChild(actions);
+
       videoGrid.appendChild(fig);
     });
+  }
+
+  db.collection("videos").orderBy("createdAt", "desc").onSnapshot(function (snap) {
+    latestVideos = snap.docs.map(function (d) { return { id: d.id, data: d.data() }; });
+    renderVideos();
   }, function (err) { console.error("videos:", err); });
 
   vform.addEventListener("submit", function (e) {
@@ -208,7 +394,7 @@ const firebaseConfig = {
       btn.disabled = false;
     }, function () {
       task.snapshot.ref.getDownloadURL().then(function (url) {
-        return db.collection("videos").add({ url: url, name: name, caption: caption, createdAt: serverTime() });
+        return db.collection("videos").add({ url: url, path: path, name: name, caption: caption, createdAt: serverTime() });
       }).then(function () {
         vform.reset(); vform.classList.remove("open");
         addVideoBtn.setAttribute("aria-expanded", "false");

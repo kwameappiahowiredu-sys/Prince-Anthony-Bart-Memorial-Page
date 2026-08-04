@@ -1,14 +1,19 @@
 # Setup — shared guestbook, photo uploads & publishing
 
-This memorial lets **anyone who visits** leave a message or add a photo, and
-everyone sees them in real time with the date & time they were added.
+This memorial lets **anyone who visits** leave a message (optionally with a
+photo or video attached) or add a photo/video, and everyone sees them in real
+time with the date & time they were added. **You** can sign in as admin on the
+site itself to edit or delete anything, without touching Firebase.
 
 To make that work you do two one-time things:
 
-1. **Connect a free Firebase database** (stores the messages & photos)
+1. **Connect a free Firebase database** (stores the messages, photos & videos,
+   and your admin login)
 2. **Publish the site online** (so people can visit it)
 
-Both are free. Budget about 15 minutes. No coding required — just copy & paste.
+Budget about 20 minutes. No coding required — just copy & paste. The database
+and guestbook are free; video uploads require linking a card to Google's
+Blaze plan (usually still $0 billed — see Step 6).
 
 ---
 
@@ -67,29 +72,29 @@ Both are free. Budget about 15 minutes. No coding required — just copy & paste
                        && request.resource.data.message is string
                        && request.resource.data.name.size() <= 80
                        && request.resource.data.message.size() <= 3000;
-         allow update, delete: if false;
+         allow update, delete: if request.auth != null;
        }
 
        match /photos/{id} {
          allow read: if true;
          allow create: if request.resource.data.image is string
                        && request.resource.data.image.size() < 1400000;
-         allow update, delete: if false;
+         allow update, delete: if request.auth != null;
        }
 
        match /videos/{id} {
          allow read: if true;
          allow create: if request.resource.data.url is string
                        && request.resource.data.url.size() <= 2000;
-         allow update, delete: if false;
+         allow update, delete: if request.auth != null;
        }
      }
    }
    ```
 
-   These rules let anyone **read and add** messages/photos, but **no one can
-   edit or delete** them from the site. To remove an inappropriate post, delete
-   it yourself in the Firestore console (Data tab).
+   These rules let anyone **read and add** messages/photos/videos, but only
+   **you, once signed in as admin** (Step 7 below), can edit or delete them
+   from the site itself.
 
 That's the database done. ✅
 
@@ -107,7 +112,8 @@ Firestore the way photos are, so they need Firebase's file storage product.
    site's traffic stays well within the free monthly quota (5 GB stored,
    1 GB downloaded/day), so the bill is normally **$0**. If you'd rather not
    link a card, skip this step — photos and the guestbook still work fine,
-   only video uploads will be unavailable.
+   only video uploads (standalone, and attached to messages) will be
+   unavailable.
 4. Once Storage is on, open the **Rules** tab and replace everything with:
 
    ```
@@ -118,13 +124,37 @@ Firestore the way photos are, so they need Firebase's file storage product.
          allow read: if true;
          allow write: if request.resource.contentType.matches('video/.*')
                       && request.resource.size < 150 * 1024 * 1024;
+         allow delete: if request.auth != null;
+       }
+       match /tribute-videos/{allPaths=**} {
+         allow read: if true;
+         allow write: if request.resource.contentType.matches('video/.*')
+                      && request.resource.size < 150 * 1024 * 1024;
+         allow delete: if request.auth != null;
        }
      }
    }
    ```
 
    This lets anyone **read and upload** videos (under 150 MB, video files
-   only), but no one can overwrite or delete them from the site.
+   only, whether shared standalone or attached to a message), but only you,
+   once signed in, can delete one from the site.
+
+### Step 7: Turn on Authentication (so you can edit & delete)
+
+This is what lets **you** — and only you — sign in on the live site to edit
+tribute messages, or delete a photo/video/message. Visitors never see this;
+it's a small "Admin" link in the footer.
+
+1. Left menu → **Build → Authentication** → **Get started**.
+2. Under **Sign-in method**, click **Email/Password** → enable it → **Save**.
+3. Go to the **Users** tab → **Add user**.
+4. Enter an email and password only you know — this is your admin login.
+   (It doesn't need to be a real inbox; it's just a login credential.)
+5. On the live site, click the small **Admin** link at the very bottom of the
+   page, and sign in with that email and password. Edit/Delete buttons will
+   appear on tributes, photos, and videos. Click **Admin → Sign out** when done,
+   especially on a shared or public computer.
 
 ---
 
@@ -151,10 +181,19 @@ and drop.
 
 ## Everyday use / moderation
 
-- **See submissions:** Firebase console → Firestore Database → **Data** tab →
-  `tributes`, `photos`, and `videos` collections.
-- **Delete a post/photo/video:** hover the document there and click the trash icon.
-- **Costs:** the free "Spark" plan is generous (plenty for a memorial). You do
-  not need to enter a credit card.
+- **On the live site:** click **Admin** at the bottom of the page, sign in
+  (Step 7), and Edit/Delete buttons appear on every tribute, photo, and video.
+  This is the easiest way to remove or fix something.
+- **From Firebase directly:** console → Firestore Database → **Data** tab →
+  `tributes`, `photos`, and `videos` collections — hover a document and click
+  the trash icon.
+- **Costs:** Firestore and Authentication stay on the free "Spark" plan — no
+  card needed. Video uploads need the Blaze plan (Step 6), which requires a
+  card but normally bills **$0** for a site like this.
+- **Note on the family gallery:** the original ~39 photos in `/images` are
+  plain files, not database entries, so the Admin edit/delete tools don't
+  apply to them — swap or remove them by editing the files directly (or ask
+  me to). Anything uploaded *through the site* (by you or visitors) is fully
+  editable/deletable via Admin.
 
 Questions or want me to change anything (limits, moderation, layout)? Just ask.
