@@ -203,16 +203,7 @@ const firebaseConfig = {
       wall.appendChild(el);
     });
   }
-   var actions = document.createElement("div"); actions.className = "owner-actions";
-var editBtn = document.createElement("button"); editBtn.type = "button"; editBtn.textContent = "Edit";
-var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
-editBtn.addEventListener("click", function () { startEditTribute(el, id, m); });
-delBtn.addEventListener("click", function () {
-  if (!confirm("Delete this tribute? This can't be undone.")) return;
-  db.collection("tributes").doc(id).delete().catch(function (err) { alert("Couldn't delete."); console.error(err); });
-});
-actions.appendChild(editBtn); actions.appendChild(delBtn);
-el.appendChild(actions);
+   
 
    var actions = document.createElement("div"); actions.className = "owner-actions";
 var editBtn = document.createElement("button"); editBtn.type = "button"; editBtn.textContent = "Edit";
@@ -234,22 +225,6 @@ delBtn.addEventListener("click", function () {
 actions.appendChild(editBtn); actions.appendChild(delBtn);
 el.appendChild(actions);
    
-
-  function startEditTribute(el, id, m) {
-    var msgEl = el.querySelector(".msg");
-    var textarea = document.createElement("textarea");
-    textarea.className = "edit-msg-area"; textarea.value = m.message;
-    msgEl.replaceWith(textarea);
-    var actions = el.querySelector(".owner-actions");
-    actions.innerHTML = "";
-    var save = document.createElement("button"); save.type = "button"; save.textContent = "Save";
-    var cancel = document.createElement("button"); cancel.type = "button"; cancel.textContent = "Cancel";
-    save.addEventListener("click", function () {
-      db.collection("tributes").doc(id).update({ message: textarea.value.trim() })
-        .catch(function (err) { alert("Couldn't save changes."); console.error(err); });
-    });
-    cancel.addEventListener("click", renderWall);
-    actions.appendChild(save); actions.appendChild(cancel);
   }
 
   db.collection("tributes").orderBy("createdAt", "desc").onSnapshot(function (snap) {
@@ -321,15 +296,6 @@ el.appendChild(actions);
       cap.textContent = (p.caption ? p.caption + " — " : "") + who + " · " + fmt(p.createdAt);
       fig.appendChild(im); fig.appendChild(cap);
 
-      var actions = document.createElement("div"); actions.className = "owner-actions";
-      var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
-      delBtn.addEventListener("click", function () {
-        if (!confirm("Delete this photo? This can't be undone.")) return;
-        db.collection("photos").doc(id).delete().catch(function (err) { alert("Couldn't delete."); console.error(err); });
-      });
-      actions.appendChild(delBtn);
-      fig.appendChild(actions);
-
       uploadGrid.appendChild(fig);
     });
   }
@@ -390,17 +356,6 @@ fig.appendChild(actions);
       var who = v.name ? v.name : "Anonymous";
       cap.textContent = (v.caption ? v.caption + " — " : "") + who + " · " + fmt(v.createdAt);
       fig.appendChild(cap);
-
-      var actions = document.createElement("div"); actions.className = "owner-actions";
-      var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
-      delBtn.addEventListener("click", function () {
-        if (!confirm("Delete this video? This can't be undone.")) return;
-        db.collection("videos").doc(id).delete().then(function () {
-          if (v.path) storage.ref(v.path).delete().catch(function () {});
-        }).catch(function (err) { alert("Couldn't delete."); console.error(err); });
-      });
-      actions.appendChild(delBtn);
-      fig.appendChild(actions);
 
       videoGrid.appendChild(fig);
     });
