@@ -32,6 +32,18 @@ a { color: var(--accent); }
 
 .wrap { max-width: 680px; margin: 0 auto; padding: 0 22px; }
 
+
+.site-label {
+  text-align: center;
+  margin: 26px 0 14px;
+  font-family: "Cormorant Garamond", var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+
 /* ----------------------------  BANNER  ---------------------------- */
 .banner { height: clamp(150px, 34vw, 210px); overflow: hidden;
   background: linear-gradient(160deg, #EEEAE4, #F6F3EE); }
