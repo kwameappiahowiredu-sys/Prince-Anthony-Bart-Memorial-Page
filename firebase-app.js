@@ -117,20 +117,43 @@ const firebaseConfig = {
   var auth = firebase.auth();
   function serverTime() { return firebase.firestore.FieldValue.serverTimestamp(); }
 
-  /* =====================  VISITOR IDENTITY (silent, no login)  ===================== */
-  var myUid = null;
-  function ensureUid(cb) {
-    if (auth.currentUser) { cb(auth.currentUser.uid); return; }
-    auth.signInAnonymously().then(function (cred) { cb(cred.user.uid); })
-      .catch(function (err) { console.error("sign-in:", err); alert("Couldn't verify you as a visitor — please refresh and try again."); });
-  }
+  /* =====================  ADMIN SIGN IN  ===================== */
+  var isAdmin = false;
+  var adminLink = $("adminLink"), adminModal = $("adminModal"), adminClose = $("adminClose"),
+      adminForm = $("adminForm"), adminSignOut = $("adminSignOut"),
+      adminSignedOut = $("adminSignedOut"), adminSignedIn = $("adminSignedIn"),
+      adminStatus = $("adminStatus");
+
+  function openAdminModal() { adminModal.hidden = false; }
+  function closeAdminModal() { adminModal.hidden = true; }
+  if (adminLink) adminLink.addEventListener("click", function (e) { e.preventDefault(); openAdminModal(); });
+  if (adminClose) adminClose.addEventListener("click", closeAdminModal);
+  if (adminModal) adminModal.addEventListener("click", function (e) { if (e.target === adminModal) closeAdminModal(); });
+
+  if (adminForm) adminForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var email = $("adminEmail").value.trim(), pass = $("adminPass").value;
+    adminStatus.textContent = "Signing in…";
+    auth.signInWithEmailAndPassword(email, pass).then(function () {
+      adminStatus.textContent = "";
+      adminForm.reset();
+      closeAdminModal();
+    }).catch(function (err) {
+      adminStatus.textContent = "Couldn't sign in — check your email and password.";
+      console.error(err);
+    });
+  });
+  if (adminSignOut) adminSignOut.addEventListener("click", function () { auth.signOut(); closeAdminModal(); });
 
   auth.onAuthStateChanged(function (user) {
-    myUid = user ? user.uid : null;
-    if (!user) auth.signInAnonymously().catch(function (err) { console.error("anon auth:", err); });
+    isAdmin = !!user;
+    document.body.classList.toggle("is-admin", isAdmin);
+    if (adminSignedOut) adminSignedOut.hidden = isAdmin;
+    if (adminSignedIn) adminSignedIn.hidden = !isAdmin;
     renderWall(); renderPhotos(); renderVideos();
   });
-   /* =====================  MEMORY WALL  ===================== */
+
+  /* =====================  MEMORY WALL  ===================== */
   var wall = $("wall");
   var latestTributes = [];
 
@@ -164,20 +187,18 @@ const firebaseConfig = {
       var from = document.createElement("div"); from.className = "from"; from.textContent = m.name;
       el.appendChild(from);
 
-     if (myUid && m.uid === myUid) {
-  var actions = document.createElement("div"); actions.className = "owner-actions";
-  var editBtn = document.createElement("button"); editBtn.type = "button"; editBtn.textContent = "Edit";
-  var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
-  editBtn.addEventListener("click", function () { startEditTribute(el, id, m); });
-  delBtn.addEventListener("click", function () {
-    if (!confirm("Delete your tribute? This can't be undone.")) return;
-    db.collection("tributes").doc(id).delete().then(function () {
-      if (m.attachPath) storage.ref(m.attachPath).delete().catch(function () {});
-    }).catch(function (err) { alert("Couldn't delete."); console.error(err); });
-  });
-  actions.appendChild(editBtn); actions.appendChild(delBtn);
-  el.appendChild(actions);
-}
+      var actions = document.createElement("div"); actions.className = "owner-actions";
+      var editBtn = document.createElement("button"); editBtn.type = "button"; editBtn.textContent = "Edit";
+      var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
+      editBtn.addEventListener("click", function () { startEditTribute(el, id, m); });
+      delBtn.addEventListener("click", function () {
+        if (!confirm("Delete this tribute? This can't be undone.")) return;
+        db.collection("tributes").doc(id).delete().then(function () {
+          if (m.attachPath) storage.ref(m.attachPath).delete().catch(function () {});
+        }).catch(function (err) { alert("Couldn't delete."); console.error(err); });
+      });
+      actions.appendChild(editBtn); actions.appendChild(delBtn);
+      el.appendChild(actions);
 
       wall.appendChild(el);
     });
@@ -213,10 +234,8 @@ const firebaseConfig = {
     if (!name || !message) return;
     var btn = mform.querySelector('button[type="submit"]'); btn.disabled = true;
 
-     ensureUid(function () {
-
     function saveTribute(attach) {
-      var payload = { name: name, message: message, createdAt: serverTime() uid: myUid };
+      var payload = { name: name, message: message, createdAt: serverTime() };
       if (attach) { payload.attachUrl = attach.url; payload.attachType = attach.type; if (attach.path) payload.attachPath = attach.path; }
       return db.collection("tributes").add(payload);
     }
@@ -243,10 +262,6 @@ const firebaseConfig = {
       return;
     }
 
-     function ensureUidPromise() {
-    return new Promise(function (resolve) { ensureUid(resolve); });
-  }
-
     work.then(function () {
       mform.reset(); mform.classList.remove("open");
       writeBtn.setAttribute("aria-expanded", "false");
@@ -256,7 +271,6 @@ const firebaseConfig = {
       console.error(err);
     }).finally(function () { btn.disabled = false; });
   });
-});
 
   /* =====================  PHOTOS  ===================== */
   var uploadWrap = $("uploadWrap"), uploadGrid = $("uploadGrid");
@@ -276,16 +290,14 @@ const firebaseConfig = {
       cap.textContent = (p.caption ? p.caption + " — " : "") + who + " · " + fmt(p.createdAt);
       fig.appendChild(im); fig.appendChild(cap);
 
-     if (myUid && p.uid === myUid) {
-  var actions = document.createElement("div"); actions.className = "owner-actions";
-  var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
-  delBtn.addEventListener("click", function () {
-    if (!confirm("Delete your photo? This can't be undone.")) return;
-    db.collection("photos").doc(id).delete().catch(function (err) { alert("Couldn't delete."); console.error(err); });
-  });
-  actions.appendChild(delBtn);
-  fig.appendChild(actions);
-}
+      var actions = document.createElement("div"); actions.className = "owner-actions";
+      var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
+      delBtn.addEventListener("click", function () {
+        if (!confirm("Delete this photo? This can't be undone.")) return;
+        db.collection("photos").doc(id).delete().catch(function (err) { alert("Couldn't delete."); console.error(err); });
+      });
+      actions.appendChild(delBtn);
+      fig.appendChild(actions);
 
       uploadGrid.appendChild(fig);
     });
@@ -302,18 +314,15 @@ const firebaseConfig = {
     var status = $("pStatus");
     if (!file) return;
     if (file.type.indexOf("image/") !== 0) { status.textContent = "Please choose an image file."; return; }
+    var btn = pform.querySelector('button[type="submit"]'); btn.disabled = true; status.textContent = "Uploading…";
     shrink(file).then(function (image) {
-      return ensureUidPromise().then(function (uid) {
-        return db.collection("photos").add({
-         image: image,
-         name: $("pName").value.trim(),
-         caption: $("pCaption").value.trim(),
-         createdAt: serverTime(),
-         uid: uid
-    });
-  });
-})
-       .then(function () {
+      return db.collection("photos").add({
+        image: image,
+        name: $("pName").value.trim(),
+        caption: $("pCaption").value.trim(),
+        createdAt: serverTime()
+      });
+    }).then(function () {
       pform.reset(); pform.classList.remove("open");
       addPhotoBtn.setAttribute("aria-expanded", "false");
       status.textContent = "";
@@ -343,18 +352,16 @@ const firebaseConfig = {
       cap.textContent = (v.caption ? v.caption + " — " : "") + who + " · " + fmt(v.createdAt);
       fig.appendChild(cap);
 
-    if (myUid && v.uid === myUid) {
-  var actions = document.createElement("div"); actions.className = "owner-actions";
-  var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
-  delBtn.addEventListener("click", function () {
-    if (!confirm("Delete your video? This can't be undone.")) return;
-    db.collection("videos").doc(id).delete().then(function () {
-      if (v.path) storage.ref(v.path).delete().catch(function () {});
-    }).catch(function (err) { alert("Couldn't delete."); console.error(err); });
-  });
-  actions.appendChild(delBtn);
-  fig.appendChild(actions);
-}
+      var actions = document.createElement("div"); actions.className = "owner-actions";
+      var delBtn = document.createElement("button"); delBtn.type = "button"; delBtn.textContent = "Delete"; delBtn.className = "danger";
+      delBtn.addEventListener("click", function () {
+        if (!confirm("Delete this video? This can't be undone.")) return;
+        db.collection("videos").doc(id).delete().then(function () {
+          if (v.path) storage.ref(v.path).delete().catch(function () {});
+        }).catch(function (err) { alert("Couldn't delete."); console.error(err); });
+      });
+      actions.appendChild(delBtn);
+      fig.appendChild(actions);
 
       videoGrid.appendChild(fig);
     });
@@ -376,7 +383,7 @@ const firebaseConfig = {
     var btn = vform.querySelector('button[type="submit"]'); btn.disabled = true;
     var name = $("vName").value.trim(), caption = $("vCaption").value.trim();
     var path = "videos/" + Date.now() + "-" + Math.random().toString(36).slice(2) + "-" + file.name;
-    var task = storage.ref().child(path).put(file, { contentType: file.type, customMetadata: { uid: myUid || "" } });
+    var task = storage.ref().child(path).put(file, { contentType: file.type });
 
     task.on("state_changed", function (snap) {
       var pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
@@ -387,10 +394,8 @@ const firebaseConfig = {
       btn.disabled = false;
     }, function () {
       task.snapshot.ref.getDownloadURL().then(function (url) {
-  return ensureUidPromise().then(function (uid) {
-    return db.collection("videos").add({ url: url, path: path, name: name, caption: caption, createdAt: serverTime(), uid: uid });
-  });
-}).then(function () {
+        return db.collection("videos").add({ url: url, path: path, name: name, caption: caption, createdAt: serverTime() });
+      }).then(function () {
         vform.reset(); vform.classList.remove("open");
         addVideoBtn.setAttribute("aria-expanded", "false");
         status.textContent = "";
