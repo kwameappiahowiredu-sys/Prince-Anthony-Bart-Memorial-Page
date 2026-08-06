@@ -208,8 +208,7 @@ footer { text-align: center; padding: 44px 22px 60px; color: var(--ink-soft); fo
 .gallery-item:hover img { transform: scale(1.05); }
 
 /* Admin-only edit/delete controls — hidden until signed in */
-.owner-actions { display: none; gap: 8px; margin-top: 10px; }
-.is-admin .owner-actions { display: flex; }
+.owner-actions { display: flex; gap: 8px; margin-top: 10px; }
 .owner-actions button { font-family: var(--sans); font-size: 12.5px; font-weight: 600; cursor: pointer;
   border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink-soft); padding: 6px 12px; }
 .owner-actions button:hover { border-color: var(--accent); color: var(--accent); }
