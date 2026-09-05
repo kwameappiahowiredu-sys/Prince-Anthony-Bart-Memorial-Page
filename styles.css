@@ -19,18 +19,6 @@
   --sans:    "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-.site-label {
-  text-align: center;
-  margin: 26px 0 14px;
-  font-family: "Cormorant Garamond", var(--serif);
-  font-style: italic;
-  font-weight: 500;
-  font-size: clamp(1.1rem, 4vw, 1.4rem);
-  letter-spacing: .22em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
@@ -44,17 +32,29 @@ a { color: var(--accent); }
 
 .wrap { max-width: 680px; margin: 0 auto; padding: 0 22px; }
 
+.site-label {
+  text-align: center;
+  margin: 26px 0 14px;
+  font-family: "Cormorant Garamond", var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
 /* ----------------------------  BANNER  ---------------------------- */
 .banner { height: clamp(150px, 34vw, 210px); overflow: hidden;
   background: linear-gradient(160deg, #EEEAE4, #F6F3EE); }
-.banner img { width: 100%; height: 100%; object-fit: cover; object-position: 82% 18%; }
+.banner img { width: 100%; height: 100%; object-fit: cover; object-position: 70% 12%; }
 
 /* ---------------------------  PORTRAIT  --------------------------- */
 .portrait { width: clamp(150px, 40vw, 188px); aspect-ratio: 1; margin: 0 auto;
   margin-top: calc(-1 * clamp(80px, 20vw, 104px)); position: relative; z-index: 2;
   border-radius: 50%; border: 6px solid var(--bg); overflow: hidden;
   background: #EEEAE4; box-shadow: 0 10px 26px -14px rgba(0,0,0,.35); }
-.portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; }
+.portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 30% 30%;}
 
 /* ---------------------------  IDENTITY  --------------------------- */
 .identity { text-align: center; margin-top: 22px; }
@@ -158,68 +158,50 @@ section { scroll-margin-top: 20px; padding-top: 52px; }
 .pform input:focus { outline: none; border-color: var(--accent); }
 .pstatus { font-family: var(--sans); font-size: 13.5px; color: var(--ink-soft); margin-top: 6px; }
 
-.up-tile { margin: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #EEEAE4; }
+.up-tile { position: relative; margin: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #EEEAE4; cursor: pointer; }
 .up-tile img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
 .up-tile figcaption { font-family: var(--sans); font-size: 12px; line-height: 1.4; color: var(--ink-soft); padding: 8px 10px; }
 
 /* ----------------------------  VIDEOS  ---------------------------- */
 .video-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 0 0 6px; }
-.video-tile { margin: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #17140f; }
-.video-tile video { width: 100%; aspect-ratio: 16/9; display: block; background: #000; }
+.video-tile { position: relative; margin: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #17140f; cursor: pointer; }
+.video-tile video { width: 100%; aspect-ratio: 16/9; display: block; background: #000; pointer-events: none; }
 .video-tile figcaption { font-family: var(--sans); font-size: 12px; line-height: 1.4; color: var(--ink-soft); padding: 8px 10px; background: var(--bg); }
+.video-tile .play-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 34px;
+  display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.video-tile .play-overlay span { width: 52px; height: 52px; border-radius: 50%;
+  background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; }
+.video-tile .play-overlay svg { width: 22px; height: 22px; margin-left: 3px; color: #fff; }
 @media (max-width: 520px) {
   .video-grid { grid-template-columns: 1fr; }
 }
 
-/* ---------------------------  FOOTER  ---------------------------- */
-footer { text-align: center; padding: 44px 22px 60px; color: var(--ink-soft); font-family: var(--serif); font-size: 15px; }
-.admin-link { margin-left: 10px; font-family: var(--sans); font-size: 11px; color: var(--line-dot);
-  text-decoration: none; letter-spacing: .04em; }
-.admin-link:hover { color: var(--ink-soft); }
-
-/* --------------------------  ADMIN MODAL  ------------------------- */
-.modal-backdrop { position: fixed; inset: 0; background: rgba(20,18,15,.55); z-index: 90;
-  display: flex; align-items: center; justify-content: center; padding: 20px; }
-.modal-backdrop[hidden] { display: none; }
-.modal-box { position: relative; background: var(--bg); border-radius: var(--radius); padding: 30px 26px;
-  max-width: 360px; width: 100%; box-shadow: 0 20px 50px -20px rgba(0,0,0,.5); }
-.modal-box h3 { font-family: var(--display); font-weight: 600; margin: 0 0 16px; font-size: 1.3rem; }
-.modal-box label { display: block; font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--ink-soft); margin: 0 0 6px; }
-.modal-box input { width: 100%; padding: 12px 14px; margin-bottom: 14px; font-family: var(--sans); font-size: 15px;
-  border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
-.modal-close { position: absolute; top: 10px; right: 14px; background: none; border: none; font-size: 22px;
-  color: var(--ink-soft); cursor: pointer; line-height: 1; }
+/* ------------------------  DELETE BUTTONS  ------------------------ */
+.delete-btn { font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: .02em;
+  color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 5px 11px; cursor: pointer; }
+.delete-btn:hover { color: #B23A2E; border-color: #B23A2E; }
+.memory { position: relative; }
+.memory .delete-btn { position: absolute; top: 20px; right: 20px; }
+.up-tile .delete-btn, .video-tile .delete-btn {
+  position: absolute; top: 6px; right: 6px; z-index: 2; background: rgba(255,255,255,.92); }
 
 /* ----------------------------  LIGHTBOX  --------------------------- */
-.lightbox { position: fixed; inset: 0; background: rgba(10,9,8,.92); z-index: 95;
-  display: flex; align-items: center; justify-content: center; padding: 60px 20px 30px; }
+.lightbox { position: fixed; inset: 0; z-index: 1000; background: rgba(10,9,8,.94);
+  display: flex; align-items: center; justify-content: center; padding: 70px 20px 24px; }
 .lightbox[hidden] { display: none; }
-.lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 20px 60px -10px rgba(0,0,0,.6); }
-.lightbox-back { position: absolute; top: 18px; left: 18px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3);
-  color: #fff; font-family: var(--sans); font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 30px; cursor: pointer; }
-.lightbox-back:hover { background: rgba(255,255,255,.22); }
+.lightbox-back { position: fixed; top: 16px; left: 16px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px;
+  border: none; background: rgba(255,255,255,.14); color: #fff; font-family: var(--sans);
+  font-size: 14px; font-weight: 600; cursor: pointer; }
+.lightbox-back:hover { background: rgba(255,255,255,.24); }
+.lightbox-back svg { width: 18px; height: 18px; }
+.lightbox-stage { max-width: 100%; max-height: 100%; z-index: 1; }
+.lightbox-stage img, .lightbox-stage video { display: block; margin: 0 auto;
+  max-width: 100%; max-height: calc(100vh - 94px); border-radius: 10px; }
 
-/* Gallery tiles are buttons now (not links), reset to look the same */
-.gallery-item { padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
-  background: #EEEAE4; cursor: pointer; aspect-ratio: 1; }
-.gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s ease; }
-.gallery-item:hover img { transform: scale(1.05); }
-
-/* Admin-only edit/delete controls — hidden until signed in */
-.owner-actions { display: none; gap: 8px; margin-top: 10px; }
-.is-admin .owner-actions { display: flex; }
-.owner-actions button { font-family: var(--sans); font-size: 12.5px; font-weight: 600; cursor: pointer;
-  border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink-soft); padding: 6px 12px; }
-.owner-actions button:hover { border-color: var(--accent); color: var(--accent); }
-.owner-actions .danger:hover { border-color: #B23A2E; color: #B23A2E; }
-.up-tile, .video-tile { position: relative; }
-.up-tile .owner-actions, .video-tile .owner-actions { padding: 0 10px 10px; }
-.edit-msg-area { width: 100%; font-family: var(--serif); font-size: 1.05rem; padding: 10px; border-radius: 8px;
-  border: 1px solid var(--line); margin: 0 0 10px; min-height: 90px; }
-
-/* Attachment shown inside a tribute */
-.memory .attachment { margin: 4px 0 14px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
-.memory .attachment img, .memory .attachment video { width: 100%; max-height: 380px; object-fit: cover; display: block; }
+/* ---------------------------  FOOTER  ---------------------------- */
+footer { text-align: center; padding: 44px 22px 60px; color: var(--ink-soft); font-family: var(--serif); font-size: 15px; }
 
 /* -----------------------  SCROLL TO TOP  ------------------------- */
 .to-top { position: fixed; right: 20px; bottom: 22px; width: 54px; height: 54px; border-radius: 50%;
